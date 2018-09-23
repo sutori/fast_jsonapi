@@ -1,6 +1,6 @@
 module FastJsonapi
   class Relationship
-    attr_reader :key, :name, :id_method_name, :record_type, :object_method_name, :object_block, :serializer, :relationship_type, :cached, :polymorphic, :conditional_proc, :transform_method
+    attr_reader :key, :name, :id_method_name, :record_type, :object_method_name, :object_block, :serializer, :relationship_type, :cached, :polymorphic, :conditional_proc, :transform_method, :links
 
     def initialize(
       key:,
@@ -14,7 +14,8 @@ module FastJsonapi
       cached: false,
       polymorphic:,
       conditional_proc:,
-      transform_method:
+      transform_method:,
+      links:
     )
       @key = key
       @name = name
@@ -28,6 +29,7 @@ module FastJsonapi
       @polymorphic = polymorphic
       @conditional_proc = conditional_proc
       @transform_method = transform_method
+      @links = links || {}
     end
 
     def serialize(record, serialization_params, output_hash)
@@ -36,6 +38,7 @@ module FastJsonapi
         output_hash[key] = {
           data: ids_hash_from_record_and_relationship(record, serialization_params) || empty_case
         }
+        add_links_hash(record, serialization_params, output_hash) if links.present?
       end
     end
 
@@ -101,6 +104,12 @@ module FastJsonapi
         input.to_s.send(*self.transform_method).to_sym
       else
         input.to_sym
+      end
+    end
+
+    def add_links_hash(record, params, output_hash)
+      output_hash[key][:links] = links.each_with_object({}) do |(key, method), hash|
+        Link.new(key: key, method: method).serialize(record, params, hash)
       end
     end
   end
